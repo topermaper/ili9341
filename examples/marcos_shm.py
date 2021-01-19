@@ -37,20 +37,18 @@ class MarcosST7789Test:
     def initLCD(self):
 
         # Initialize  ILI9341 library
-        if self._args == 1:
+        if self._args.display == 1:
             self._disp = [ili9341.ILI9341(0)]
-        elif self._args == 2:
-            self._disp = [ili9341.ILI9341(0),self._disp = ili9341.ILI9341(1)]
+        elif self._args.display == 2:
+            self._disp = [ili9341.ILI9341(0), ili9341.ILI9341(1)]
         else:
             Exception('Only 2 LCD screens supported')
 
-
-        self._disp = ili9341.ILI9341([0])
         for disp in self._disp:
             disp.Init()
 
 
-    def parseArgs(self)
+    def parseArgs(self):
         parser = argparse.ArgumentParser(description='Drives 1 or 2 ILI9341 TFT screens over SPI using a RP3B+')
         parser.add_argument('--clock', dest='spi_clock_speed', type=int, default=32000000, help='SPI clock speed Hz')
         parser.add_argument('--display', dest='display', type=int, default=1, help='1 or 2 screens')
@@ -74,8 +72,11 @@ class MarcosST7789Test:
     # A thread that produces data 
     def processor(self, condition):
 
-
-        shm = shared_memory.SharedMemory(name='sh_buffer', create=True, size=(self._disp.height*self._disp.width*2))
+        shm = shared_memory.SharedMemory(
+            name='sh_buffer',
+            create=True,
+            size=(ili9341.ILI9341_TFTWIDTH * ili9341.ILI9341_TFTHEIGHT * 2)
+        )
 
         font30 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 30)
         font15 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 15)
@@ -89,7 +90,7 @@ class MarcosST7789Test:
 
             start_time = end_time
 
-            image = Image.new('RGB', (self._disp.height,self._disp.width), (255,255,255)) 
+            image = Image.new('RGB', (ili9341.ILI9341_TFTHEIGHT, ili9341.ILI9341_TFTWIDTH), (255,255,255)) 
 
             draw = ImageDraw.Draw(image)
 
@@ -110,13 +111,9 @@ class MarcosST7789Test:
             # gives a single float value
             draw.text((90, 140), 'CPU: {0:.1f}%'.format(psutil.cpu_percent()), font = font15, fill = "BLUE")
             
-
-            
             # Display some bubbles to stress the cpu
-            for i in range(35):
+            for i in range(50):
                 Ball(draw,randint(0,320),randint(0,240),randint(5,25))
-            
-   
 
             img = np.asarray(image)
             pix = np.zeros((240, 320,2), dtype = np.uint8)
@@ -124,7 +121,6 @@ class MarcosST7789Test:
             pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
             pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
             
-            #array = pix.flatten().tolist()
 
             with condition:
                 condition.wait()
@@ -148,8 +144,8 @@ class MarcosST7789Test:
             fps = (1/(end_time - start_time))
             start_time = end_time
 
-            #read_from_buf = np.frombuffer(buffer=shm.buf, dtype=np.uint8)
-            self._disp.Render(disp_id=0, shm_buffer=shm_buffer)
+            for i in range(len(self._disp)):
+                self._disp[i].Render(disp_id=i, shm_buffer=shm_buffer)
 
             with condition:
                 condition.notify()

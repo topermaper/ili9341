@@ -79,128 +79,127 @@ ILI9341_WHITE       = 0xFFFF
 
 class ILI9341(object):
 
-    def __init__(self, cs=0):
-        self.width = ILI9341_TFTWIDTH
+    def __init__(self, disp_id=0):
+        self.width  = ILI9341_TFTWIDTH
         self.height = ILI9341_TFTHEIGHT
         
-        self._dc = config.DC_PIN
+        self._dc  = config.DC_PIN
         self._rst = config.RST_PIN
-        self._bl = config.BL_PIN
-        self._cs = config.CS_PIN
-        self._cs_a = cs
+        self._bl  = config.BL_PIN
+        self._cs  = config.CS_PIN[disp_id]
+
+        self._disp_id = disp_id
 
 
     """    Write register address and data     """
-    def command(self, cmd, cs):
+    def command(self, cmd, disp_id):
         config.digital_write(self._cs, GPIO.LOW)
         config.digital_write(self._dc, GPIO.LOW)
-        #print("Command: {} screen: {}".format(hex(cmd),cs))
-        config.spi_writebyte([cmd], cs)
+        #print("Command: {} screen: {}".format(hex(cmd),disp_id))
+        config.spi_writebyte([cmd], disp_id)
         config.digital_write(self._cs, GPIO.HIGH)
 
-    def data(self, val, cs):
+    def data(self, val, disp_id):
         config.digital_write(self._cs, GPIO.LOW)
         config.digital_write(self._dc, GPIO.HIGH)
-        #print("Data: {} screen: {}".format(hex(val),cs))
-        config.spi_writebyte([val], cs)
+        #print("Data: {} screen: {}".format(hex(val),disp_id))
+        config.spi_writebyte([val], disp_id)
         config.digital_write(self._cs, GPIO.HIGH)
 
     def Init(self):
         """Initialize dispaly""" 
 
-        config.module_init(self._cs_a)
+        config.module_init(self._disp_id)
         
         self.reset()
         
-        for cs_id, cs in enumerate(self._cs_a):
-
-            self.command(0xEF, cs_id)
-            self.data(0x03, cs_id)
-            self.data(0x80, cs_id)
-            self.data(0x02, cs_id)
-            self.command(0xCF, cs_id)
-            self.data(0x00, cs_id)
-            self.data(0XC1, cs_id)
-            self.data(0X30, cs_id)
-            self.command(0xED, cs_id)
-            self.data(0x64, cs_id)
-            self.data(0x03, cs_id)
-            self.data(0X12, cs_id)
-            self.data(0X81, cs_id)
-            self.command(0xE8, cs_id)
-            self.data(0x85, cs_id)
-            self.data(0x00, cs_id)
-            self.data(0x78, cs_id)
-            self.command(0xCB, cs_id)
-            self.data(0x39, cs_id)
-            self.data(0x2C, cs_id)
-            self.data(0x00, cs_id)
-            self.data(0x34, cs_id)
-            self.data(0x02, cs_id)
-            self.command(0xF7, cs_id)
-            self.data(0x20, cs_id)
-            self.command(0xEA, cs_id)
-            self.data(0x00, cs_id)
-            self.data(0x00, cs_id)
-            self.command(ILI9341_PWCTR1, cs_id)    # Power control
-            self.data(0x23, cs_id)                    # VRH[5:0]
-            self.command(ILI9341_PWCTR2, cs_id)    # Power control
-            self.data(0x10, cs_id)                    # SAP[2:0];BT[3:0]
-            self.command(ILI9341_VMCTR1, cs_id)   # VCM control
-            self.data(0x3e, cs_id)
-            self.data(0x28, cs_id)
-            self.command(ILI9341_VMCTR2, cs_id)    # VCM control2
-            self.data(0x86, cs_id)                    # --
-            self.command(ILI9341_MADCTL, cs_id)    #  Memory Access Control
-            self.data(0x38, cs_id)
-            self.command(ILI9341_PIXFMT, cs_id)
-            self.data(0x55, cs_id)
-            self.command(ILI9341_FRMCTR1, cs_id)
-            self.data(0x00, cs_id)
-            self.data(0x18, cs_id)
-            self.command(ILI9341_DFUNCTR, cs_id)    #  Display Function Control
-            self.data(0x08, cs_id)
-            self.data(0x82, cs_id)
-            self.data(0x27, cs_id)
-            self.command(0xF2, cs_id)                #  3Gamma Function Disable
-            self.data(0x00, cs_id)
-            self.command(ILI9341_GAMMASET, cs_id)    # Gamma curve selected
-            self.data(0x01, cs_id)
-            self.command(ILI9341_GMCTRP1, cs_id)    # Set Gamma
-            self.data(0x0F, cs_id)
-            self.data(0x31, cs_id)
-            self.data(0x2B, cs_id)
-            self.data(0x0C, cs_id)
-            self.data(0x0E, cs_id)
-            self.data(0x08, cs_id)
-            self.data(0x4E, cs_id)
-            self.data(0xF1, cs_id)
-            self.data(0x37, cs_id)
-            self.data(0x07, cs_id)
-            self.data(0x10, cs_id)
-            self.data(0x03, cs_id)
-            self.data(0x0E, cs_id)
-            self.data(0x09, cs_id)
-            self.data(0x00, cs_id)
-            self.command(ILI9341_GMCTRN1, cs_id)    # Set Gamma
-            self.data(0x00, cs_id)
-            self.data(0x0E, cs_id)
-            self.data(0x14, cs_id)
-            self.data(0x03, cs_id)
-            self.data(0x11, cs_id)
-            self.data(0x07, cs_id)
-            self.data(0x31, cs_id)
-            self.data(0xC1, cs_id)
-            self.data(0x48, cs_id)
-            self.data(0x08, cs_id)
-            self.data(0x0F, cs_id)
-            self.data(0x0C, cs_id)
-            self.data(0x31, cs_id)
-            self.data(0x36, cs_id)
-            self.data(0x0F, cs_id)
-            self.command(ILI9341_SLPOUT, cs_id)    # Exit Sleep
-            time.sleep(0.120)
-            self.command(ILI9341_DISPON, cs_id)    # Display on
+        self.command(0xEF, self._disp_id)
+        self.data(0x03, self._disp_id)
+        self.data(0x80, self._disp_id)
+        self.data(0x02, self._disp_id)
+        self.command(0xCF, self._disp_id)
+        self.data(0x00, self._disp_id)
+        self.data(0XC1, self._disp_id)
+        self.data(0X30, self._disp_id)
+        self.command(0xED, self._disp_id)
+        self.data(0x64, self._disp_id)
+        self.data(0x03, self._disp_id)
+        self.data(0X12, self._disp_id)
+        self.data(0X81, self._disp_id)
+        self.command(0xE8, self._disp_id)
+        self.data(0x85, self._disp_id)
+        self.data(0x00, self._disp_id)
+        self.data(0x78, self._disp_id)
+        self.command(0xCB, self._disp_id)
+        self.data(0x39, self._disp_id)
+        self.data(0x2C, self._disp_id)
+        self.data(0x00, self._disp_id)
+        self.data(0x34, self._disp_id)
+        self.data(0x02, self._disp_id)
+        self.command(0xF7, self._disp_id)
+        self.data(0x20, self._disp_id)
+        self.command(0xEA, self._disp_id)
+        self.data(0x00, self._disp_id)
+        self.data(0x00, self._disp_id)
+        self.command(ILI9341_PWCTR1, self._disp_id)    # Power control
+        self.data(0x23, self._disp_id)                    # VRH[5:0]
+        self.command(ILI9341_PWCTR2, self._disp_id)    # Power control
+        self.data(0x10, self._disp_id)                    # SAP[2:0];BT[3:0]
+        self.command(ILI9341_VMCTR1, self._disp_id)   # VCM control
+        self.data(0x3e, self._disp_id)
+        self.data(0x28, self._disp_id)
+        self.command(ILI9341_VMCTR2, self._disp_id)    # VCM control2
+        self.data(0x86, self._disp_id)                    # --
+        self.command(ILI9341_MADCTL, self._disp_id)    #  Memory Access Control
+        self.data(0x38, self._disp_id)
+        self.command(ILI9341_PIXFMT, self._disp_id)
+        self.data(0x55, self._disp_id)
+        self.command(ILI9341_FRMCTR1, self._disp_id)
+        self.data(0x00, self._disp_id)
+        self.data(0x18, self._disp_id)
+        self.command(ILI9341_DFUNCTR, self._disp_id)    #  Display Function Control
+        self.data(0x08, self._disp_id)
+        self.data(0x82, self._disp_id)
+        self.data(0x27, self._disp_id)
+        self.command(0xF2, self._disp_id)                #  3Gamma Function Disable
+        self.data(0x00, self._disp_id)
+        self.command(ILI9341_GAMMASET, self._disp_id)    # Gamma curve selected
+        self.data(0x01, self._disp_id)
+        self.command(ILI9341_GMCTRP1, self._disp_id)    # Set Gamma
+        self.data(0x0F, self._disp_id)
+        self.data(0x31, self._disp_id)
+        self.data(0x2B, self._disp_id)
+        self.data(0x0C, self._disp_id)
+        self.data(0x0E, self._disp_id)
+        self.data(0x08, self._disp_id)
+        self.data(0x4E, self._disp_id)
+        self.data(0xF1, self._disp_id)
+        self.data(0x37, self._disp_id)
+        self.data(0x07, self._disp_id)
+        self.data(0x10, self._disp_id)
+        self.data(0x03, self._disp_id)
+        self.data(0x0E, self._disp_id)
+        self.data(0x09, self._disp_id)
+        self.data(0x00, self._disp_id)
+        self.command(ILI9341_GMCTRN1, self._disp_id)    # Set Gamma
+        self.data(0x00, self._disp_id)
+        self.data(0x0E, self._disp_id)
+        self.data(0x14, self._disp_id)
+        self.data(0x03, self._disp_id)
+        self.data(0x11, self._disp_id)
+        self.data(0x07, self._disp_id)
+        self.data(0x31, self._disp_id)
+        self.data(0xC1, self._disp_id)
+        self.data(0x48, self._disp_id)
+        self.data(0x08, self._disp_id)
+        self.data(0x0F, self._disp_id)
+        self.data(0x0C, self._disp_id)
+        self.data(0x31, self._disp_id)
+        self.data(0x36, self._disp_id)
+        self.data(0x0F, self._disp_id)
+        self.command(ILI9341_SLPOUT, self._disp_id)    # Exit Sleep
+        time.sleep(0.120)
+        self.command(ILI9341_DISPON, self._disp_id)    # Display on
 
     def reset(self):
         """Reset the display"""
@@ -250,5 +249,5 @@ class ILI9341(object):
             image = np.frombuffer(buffer=shm_buffer.buf, dtype=np.uint8)
 
             # Use spi_writebytes2 to avoid calling tolist()
-            config.spi_writebytes2(image)
+            config.spi_writebytes2(image, disp_id)
 
