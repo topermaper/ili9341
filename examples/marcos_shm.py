@@ -17,7 +17,7 @@ import numpy as np
 
 from waveshare_2inch_LCD import ili9341
 
-from PIL import Image,ImageDraw,ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 from multiprocessing import shared_memory
 import multiprocessing
