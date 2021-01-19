@@ -33,8 +33,8 @@ class RaspberryPi:
         self.SPI[cs].writebytes2(data)
 
     def module_init(self, cs=0):
+        logging.debug('module_init cs={}'.format(str(cs)))
 
-        print('module_init cs={}'.format(str(cs)))
         self.GPIO = RPi.GPIO
         self.GPIO.setmode(self.GPIO.BCM)
         self.GPIO.setwarnings(False)
@@ -46,10 +46,8 @@ class RaspberryPi:
 
         spi = spidev.SpiDev(0, cs)
         spi.mode = 0b00
-        spi.max_speed_hz = 2000000 
+        spi.max_speed_hz = 32000000 
         self.SPI.append(spi)
-
-        print(self.SPI)
 
         return 0
 
