@@ -2,14 +2,17 @@ import os
 import logging
 import sys
 import time
-
+import spidev
+import RPi.GPIO
 
 class RaspberryPi:
     # Pin definition
     RST_PIN = 25
     DC_PIN = 24
     BL_PIN = 15
-    CS_PIN = [8,7] # GPIO 8 for display 0, GPIO 7 for display 1
+    # GPIO 8 for display 0, GPIO 7 for display 1
+    CS0_PIN = 8
+    CS1_PIN = 7
 
     def __init__(self):
        self.SPI = []
@@ -30,22 +33,24 @@ class RaspberryPi:
         self.SPI[cs].writebytes2(data)
 
     def module_init(self, cs=0):
-        import spidev as SPI
-        import RPi.GPIO
 
+        print('module_init cs={}'.format(str(cs)))
         self.GPIO = RPi.GPIO
         self.GPIO.setmode(self.GPIO.BCM)
         self.GPIO.setwarnings(False)
         self.GPIO.setup(self.RST_PIN, self.GPIO.OUT)
         self.GPIO.setup(self.DC_PIN, self.GPIO.OUT)
         self.GPIO.setup(self.BL_PIN, self.GPIO.OUT)
-        self.GPIO.setup(self.CS_PIN, self.GPIO.OUT)
+        self.GPIO.setup(self.CS0_PIN, self.GPIO.OUT)
+        self.GPIO.setup(self.CS1_PIN, self.GPIO.OUT)
 
-        spi = SPI.SpiDev(0, cs)
+        spi = spidev.SpiDev(0, cs)
         spi.mode = 0b00
-        spi.max_speed_hz = 32000000 
+        spi.max_speed_hz = 2000000 
         self.SPI.append(spi)
-        
+
+        print(self.SPI)
+
         return 0
 
     def module_exit(self):

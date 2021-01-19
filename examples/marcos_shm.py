@@ -114,7 +114,7 @@ class MarcosST7789Test:
             draw.text((240, 90), '1', font = font60, fill = "BLACK")
             
             # Display some bubbles to stress the cpu
-            for i in range(20):
+            for i in range(50):
                 Ball(draw,randint(0,320),randint(0,240),randint(5,25))
 
             img = np.asarray(image)
@@ -149,7 +149,7 @@ class MarcosST7789Test:
                 draw2.text((240, 90), '2', font = font60, fill = "BLACK")
                 
                 # Display some bubbles to stress the cpu
-                for i in range(20):
+                for i in range(50):
                     Ball(draw,randint(0,320),randint(0,240),randint(5,25))
 
                 img2 = np.asarray(image2)
@@ -157,8 +157,6 @@ class MarcosST7789Test:
                 #RGB888 >> RGB565
                 pix2[...,[0]] = np.add(np.bitwise_and(img2[...,[0]],0xF8),np.right_shift(img2[...,[1]],5))
                 pix2[...,[1]] = np.add(np.bitwise_and(np.left_shift(img2[...,[1]],3),0xE0), np.right_shift(img2[...,[2]],3))
-
-
 
             with condition:
                 condition.wait()
@@ -174,8 +172,6 @@ class MarcosST7789Test:
 
     # A thread that consumes data 
     def renderer(self, condition):
-
-        #shm_buffer = shared_memory.SharedMemory(name='sh_buffer')
         
         start_time = time.time()
         end_time   = 0
@@ -186,8 +182,6 @@ class MarcosST7789Test:
             start_time = end_time
 
             for disp in self._disp:
-                #disp.Render(shm_buffer=shm_buffer)
-                #time.sleep(0.1)
                 disp.Render()
 
             with condition:

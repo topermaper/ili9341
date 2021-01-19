@@ -87,7 +87,8 @@ class ILI9341(object):
         self._dc  = config.DC_PIN
         self._rst = config.RST_PIN
         self._bl  = config.BL_PIN
-        self._cs  = config.CS_PIN[disp_id]
+
+        self._cs  = [config.CS0_PIN, config.CS1_PIN]
 
         self._disp_id = disp_id
 
@@ -100,29 +101,50 @@ class ILI9341(object):
         )
 
 
+    def select_display(self,disp_id):
+        for i in range(len(self._cs)):
+            if i == disp_id:
+                config.digital_write(self._cs[i], GPIO.HIGH)
+            else:
+                config.digital_write(self._cs[i], GPIO.LOW)
+
+    def unselect_display(self,disp_id):
+        for i in range(len(self._cs)):
+            if i == disp_id:
+                config.digital_write(self._cs[i], GPIO.LOW)
+            else:
+                config.digital_write(self._cs[i], GPIO.HIGH)
+
     """    Write register address and data     """
     def command(self, cmd, disp_id):
-        config.digital_write(self._cs, GPIO.LOW)
+        #time.sleep(0.5)
+        self.select_display(disp_id)
+        #config.digital_write(self._cs, GPIO.LOW)
         config.digital_write(self._dc, GPIO.LOW)
         print("Command: {} screen: {}".format(hex(cmd),disp_id))
         config.spi_writebyte([cmd], disp_id)
-        config.digital_write(self._cs, GPIO.HIGH)
+        self.unselect_display(disp_id)
+        #config.digital_write(self._cs, GPIO.HIGH)
 
     def data(self, val, disp_id):
-        config.digital_write(self._cs, GPIO.LOW)
+        #time.sleep(0.5)
+        self.select_display(disp_id)
+        #config.digital_write(self._cs, GPIO.LOW)
         config.digital_write(self._dc, GPIO.HIGH)
         print("Data: {} screen: {}".format(hex(val),disp_id))
         config.spi_writebyte([val], disp_id)
         print('cs GPIO pin: {}'.format(str(self._cs)))
-        config.digital_write(self._cs, GPIO.HIGH)
+        self.unselect_display(disp_id)
+        #config.digital_write(self._cs, GPIO.HIGH)
 
     def Init(self):
         """Initialize dispaly""" 
 
         config.module_init(self._disp_id)
         
+        print('reset screen {}'.format(self._disp_id))
         self.reset()
-        
+        print('START INIT COMMANDS')
         self.command(0xEF, self._disp_id)
         self.data(0x03, self._disp_id)
         self.data(0x80, self._disp_id)
@@ -210,6 +232,7 @@ class ILI9341(object):
         self.command(ILI9341_SLPOUT, self._disp_id)    # Exit Sleep
         time.sleep(0.120)
         self.command(ILI9341_DISPON, self._disp_id)    # Display on
+        print('END COMMANDS, DISPLAY IS ON')
 
     def reset(self):
         """Reset the display"""
@@ -249,7 +272,7 @@ class ILI9341(object):
         
         # Render buffer
         #print('im the rendered going to sleep {0:.3f}'.format(time.time()))
-
+        print('*********START RENDERING**************')
         if self._shm_buffer is not None:
 
             self.SetWindows ( 0, 0, self.height, self.width, self._disp_id)
