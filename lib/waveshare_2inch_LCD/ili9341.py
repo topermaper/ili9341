@@ -7,6 +7,7 @@ import time
 import numpy as np
 
 from threading import Event
+from multiprocessing import shared_memory
 
 
 # Constants for interacting with display registers.
@@ -79,7 +80,7 @@ ILI9341_WHITE       = 0xFFFF
 
 class ILI9341(object):
 
-    def __init__(self, disp_id=0):
+    def __init__(self, disp_id):
         self.width  = ILI9341_TFTWIDTH
         self.height = ILI9341_TFTHEIGHT
         
@@ -90,20 +91,29 @@ class ILI9341(object):
 
         self._disp_id = disp_id
 
+        self._shm_buffer_name = 'SHM_BUFFER_{}'.format(str(disp_id))
+
+        self._shm_buffer = shared_memory.SharedMemory(
+            name = self._shm_buffer_name,
+            create=True,
+            size=(ILI9341_TFTWIDTH * ILI9341_TFTHEIGHT * 2)
+        )
+
 
     """    Write register address and data     """
     def command(self, cmd, disp_id):
         config.digital_write(self._cs, GPIO.LOW)
         config.digital_write(self._dc, GPIO.LOW)
-        #print("Command: {} screen: {}".format(hex(cmd),disp_id))
+        print("Command: {} screen: {}".format(hex(cmd),disp_id))
         config.spi_writebyte([cmd], disp_id)
         config.digital_write(self._cs, GPIO.HIGH)
 
     def data(self, val, disp_id):
         config.digital_write(self._cs, GPIO.LOW)
         config.digital_write(self._dc, GPIO.HIGH)
-        #print("Data: {} screen: {}".format(hex(val),disp_id))
+        print("Data: {} screen: {}".format(hex(val),disp_id))
         config.spi_writebyte([val], disp_id)
+        print('cs GPIO pin: {}'.format(str(self._cs)))
         config.digital_write(self._cs, GPIO.HIGH)
 
     def Init(self):
@@ -222,32 +232,31 @@ class ILI9341(object):
             x1 = self.width-1
         if y1 is None:
             y1 = self.height-1
-        self.command(ILI9341_CASET ,cs)        # Column addr set
+        self.command(ILI9341_CASET ,cs)     # Column addr set
         self.data(x0 >> 8, cs)
-        self.data(x0, cs)                    # XSTART
+        self.data(x0, cs)                   # XSTART
         self.data(x1 >> 8, cs)
         self.data(x1, cs)                   # XEND
-        self.command(ILI9341_PASET, cs)        # Row addr set
+        self.command(ILI9341_PASET, cs)     # Row addr set
         self.data(y0 >> 8, cs)
-        self.data(y0, cs)                # YSTART
+        self.data(y0, cs)                   # YSTART
         self.data(y1 >> 8, cs)
-        self.data(y1, cs)                    # YEND
-        self.command(ILI9341_RAMWR, cs)        # write to RAM
+        self.data(y1, cs)                   # YEND
+        self.command(ILI9341_RAMWR, cs)     # write to RAM
 
-    def Render(self, shm_buffer, disp_id=0):
-        """Set buffer to value of Python Imaging Library image."""
-        """Write display buffer to physical display"""
+
+    def Render(self):
         
         # Render buffer
         #print('im the rendered going to sleep {0:.3f}'.format(time.time()))
 
-        if shm_buffer is not None:
+        if self._shm_buffer is not None:
 
-            self.SetWindows ( 0, 0, self.height, self.width, disp_id)
+            self.SetWindows ( 0, 0, self.height, self.width, self._disp_id)
             config.digital_write(self._dc,GPIO.HIGH)
 
-            image = np.frombuffer(buffer=shm_buffer.buf, dtype=np.uint8)
+            image = np.frombuffer(buffer= self._shm_buffer.buf, dtype=np.uint8)
 
             # Use spi_writebytes2 to avoid calling tolist()
-            config.spi_writebytes2(image, disp_id)
+            config.spi_writebytes2(image, self._disp_id)
 
