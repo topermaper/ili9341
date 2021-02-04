@@ -14,9 +14,7 @@ if os.path.exists(libdir):
 import logging
 import time
 import numpy as np
-
 from LCD import ili9341
-
 from PIL import Image, ImageDraw, ImageFont
 
 from multiprocessing import shared_memory
@@ -34,9 +32,9 @@ class MarcosST7789Test:
 
         # Initialize  ILI9341 library
         if self._args.dual:
-            self._disp = [ili9341.ILI9341(0), ili9341.ILI9341(1)]
+            self._disp = [ili9341.ILI9341(0, spi_speed=self._args.spi_clock), ili9341.ILI9341(1, spi_speed=self._args.spi_clock)]
         else:
-            self._disp = [ili9341.ILI9341(0)]
+            self._disp = [ili9341.ILI9341(0, spi_speed=self._args.spi_clock)]
 
         for disp in self._disp:
             disp.Init()
@@ -65,17 +63,6 @@ class MarcosST7789Test:
         logging.debug(self._args)
 
 
-    def main(self):
-
-        self.parseArgs()
-        self.initLCD()
-
-        condition = multiprocessing.Condition()
-        
-        process1 = multiprocessing.Process(target=self.processor, args=(condition,))
-        process2 = multiprocessing.Process(target=self.renderer, args=(condition,))
-        process1.start()
-        process2.start()
 
 
     # Returns pixel array in format RGB565, ready for rendering
@@ -99,23 +86,21 @@ class MarcosST7789Test:
         draw.text((90, 110), 'fps: {0:.2f}'.format(self.fps), font = self._fonts['font15'], fill = "BLUE")
         
         # gives a single float value
-        draw.text((90, 140), 'CPU: {0:.1f}%'.format(psutil.cpu_percent()), font = self._fonts['font15'], fill = "BLUE")
+        draw.text((60, 140), 'CPU usage: {0:.1f}%'.format(psutil.cpu_percent()), font = self._fonts['font15'], fill = "BLUE")
 
+        draw.text((45, 170), 'CPU clock: {0:.1f} MHz'.format(psutil.cpu_freq().current), font = self._fonts['font15'], fill = "BLUE")
+            
         draw.text((240, 90), '1', font = self._fonts['font60'], fill = "BLACK")
         
         # Display some bubbles to stress the cpu
         for i in range(self._args.bubbles):
             Ball(draw,randint(0,320),randint(0,240),randint(5,25))
 
-        img = np.asarray(image)
-        pix = np.zeros((240, 320,2), dtype = np.uint8)
-        #RGB888 >> RGB565
-        pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
-        pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
-
-        return pix
+        logging.debug("New Image is ready to be processed and rendered")
+        return image
 
 
+    '''
     # Returns pixel array in format RGB565, ready for rendering
     def drawDisplay2(self):
         image = Image.new('RGB', (ili9341.ILI9341_TFTHEIGHT, ili9341.ILI9341_TFTWIDTH), (255,255,255)) 
@@ -145,13 +130,8 @@ class MarcosST7789Test:
         for i in range(self._args.bubbles):
             Ball(draw,randint(0,320),randint(0,240),randint(5,25))
 
-        img = np.asarray(image)
-        pix = np.zeros((240, 320,2), dtype = np.uint8)
-        #RGB888 >> RGB565
-        pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
-        pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
-
-        return pix
+        return image
+    '''
 
     def loadFonts(self):
         self._fonts = {}
@@ -160,18 +140,13 @@ class MarcosST7789Test:
         self._fonts['font15'] = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 15)
 
  
-    # A thread that produces data 
-    def processor(self, condition):
+    def main(self):
 
-        # Shared memmory buffer
-        shm = shared_memory.SharedMemory(name=self._disp[0]._shm_buffer_name)
-
-        if self._args.dual:
-            shm2 = shared_memory.SharedMemory(name=self._disp[1]._shm_buffer_name)
+        self.parseArgs()
+        self.initLCD()
 
         # Load fonts
         self.loadFonts()
-
 
         start_time = time.time()
         end_time   = 0
@@ -182,43 +157,15 @@ class MarcosST7789Test:
 
             start_time = end_time
 
-            ############## IMAGE 1 ###############
-            pix = self.drawDisplay1()
-            
-            ############## IMAGE 2 ###############
+            image = self.drawDisplay1()
+            self._disp[0].imageReady(image)
+
+            '''
             if self._args.dual:
-                pix2 = self.drawDisplay2()
+                image = self.drawDisplay2()  
+                self._disp[1] = self.imageReady(image)
+            '''
 
-            with condition:
-                condition.wait()
-                nd_array = np.ndarray(shape=pix.shape, dtype = pix.dtype, buffer=shm.buf)
-                nd_array[:] = pix[:]
-                if self._args.dual:
-                    nd_array2 = np.ndarray(shape=pix2.shape, dtype = pix2.dtype, buffer=shm2.buf)
-                    nd_array2[:] = pix2[:]
-                logging.debug('Image ready for rendering')
-            
-            end_time = time.time()
-
-
-    # A thread that consumes data 
-    def renderer(self, condition):
-        
-        start_time = time.time()
-        end_time   = 0
-
-        while True: 
-
-            fps = (1/(end_time - start_time))
-            start_time = end_time
-
-            for disp in self._disp:
-                disp.Render()
-
-            with condition:
-                condition.notify()
-
-            logging.info("Rendering at {:.2f} fps".format(fps))
             end_time = time.time()
 
 
