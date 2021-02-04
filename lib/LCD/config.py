@@ -6,13 +6,15 @@ import spidev
 import RPi.GPIO
 
 class RaspberryPi:
+    
     # Pin definition
     RST_PIN = 25
-    DC_PIN = 24
-    BL_PIN = 15
-    # GPIO 8 for display 0, GPIO 7 for display 1
+    DC_PIN = 12
+    BL_PIN = 23
+
+    # GPIO 9 for display 0
     CS0_PIN = 8
-    CS1_PIN = 7
+    CS1_PIN = None
 
     def __init__(self):
        self.SPI = []
@@ -46,7 +48,9 @@ class RaspberryPi:
 
         spi = spidev.SpiDev(0, cs)
         spi.mode = 0b00
-        spi.max_speed_hz = 20000000 
+
+        # SPI bus speed
+        spi.max_speed_hz = 50000000 
         self.SPI.append(spi)
 
         return 0

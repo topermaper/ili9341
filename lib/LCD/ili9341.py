@@ -174,13 +174,13 @@ class ILI9341(object):
         self.data(0x23, self._disp_id)                    # VRH[5:0]
         self.command(ILI9341_PWCTR2, self._disp_id)    # Power control
         self.data(0x10, self._disp_id)                    # SAP[2:0];BT[3:0]
-        self.command(ILI9341_VMCTR1, self._disp_id)   # VCM control
+        self.command(ILI9341_VMCTR1, self._disp_id)    # VCM control
         self.data(0x3e, self._disp_id)
         self.data(0x28, self._disp_id)
         self.command(ILI9341_VMCTR2, self._disp_id)    # VCM control2
-        self.data(0x86, self._disp_id)                    # --
+        self.data(0x86, self._disp_id)
         self.command(ILI9341_MADCTL, self._disp_id)    #  Memory Access Control
-        self.data(0x38, self._disp_id)
+        self.data(0xF8, self._disp_id)
         self.command(ILI9341_PIXFMT, self._disp_id)
         self.data(0x55, self._disp_id)
         self.command(ILI9341_FRMCTR1, self._disp_id)
@@ -228,7 +228,11 @@ class ILI9341(object):
         self.data(0x0F, self._disp_id)
         self.command(ILI9341_SLPOUT, self._disp_id)    # Exit Sleep
         time.sleep(0.120)
-        self.command(ILI9341_DISPON, self._disp_id)    # Display on
+        self.command(ILI9341_DISPON, self._disp_id)    # Display 
+        
+        # Turn on backlight
+        config.digital_write(self._bl, GPIO.HIGH)
+
         logging.debug('** End command init sequence **')
 
     def reset(self):
