@@ -5,41 +5,34 @@ import time
 import sys
 import os
 import argparse
-
-picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
-libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
-if os.path.exists(libdir):
-    sys.path.append(libdir)
-
 import logging
 import time
 import numpy as np
+import psutil
+import multiprocessing
+
+libdir  = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
+confdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'conf')
+
+if os.path.exists(libdir):
+    sys.path.append(libdir)
+
+if os.path.exists(confdir):
+    sys.path.append(confdir)
+
 
 from LCD import ili9341
-
 from PIL import Image, ImageDraw, ImageFont
-
 from multiprocessing import shared_memory
-import multiprocessing
-import threading
 from utils.ball import Ball
 from random import randint
-
-import psutil
+from menu.menu import Menu,MenuLoader
 
 
 class MarcosST7789Test:
 
-    def initLCD(self):
-
-        # Initialize  ILI9341 library
-        if self._args.dual:
-            self._disp = [ili9341.ILI9341(0), ili9341.ILI9341(1)]
-        else:
-            self._disp = [ili9341.ILI9341(0)]
-
-        for disp in self._disp:
-            disp.Init()
+    def __init__(self):
+        self.parseArgs()
 
 
     def parseArgs(self):
@@ -65,9 +58,21 @@ class MarcosST7789Test:
         logging.debug(self._args)
 
 
+    def initLCD(self):
+
+        # Initialize  ILI9341 library
+        if self._args.dual:
+            self._disp = [ili9341.ILI9341(0), ili9341.ILI9341(1)]
+        else:
+            self._disp = [ili9341.ILI9341(0)]
+
+        for disp in self._disp:
+            disp.Init()
+
+
     def main(self):
 
-        self.parseArgs()
+       
         self.initLCD()
 
         condition = multiprocessing.Condition()
@@ -77,7 +82,7 @@ class MarcosST7789Test:
         process1.start()
         process2.start()
 
-
+    '''
     # Returns pixel array in format RGB565, ready for rendering
     def drawDisplay1(self):
         image = Image.new('RGB', (ili9341.ILI9341_TFTHEIGHT, ili9341.ILI9341_TFTWIDTH), (255,255,255)) 
@@ -114,8 +119,9 @@ class MarcosST7789Test:
         pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
 
         return pix
+    '''
 
-
+    '''
     # Returns pixel array in format RGB565, ready for rendering
     def drawDisplay2(self):
         image = Image.new('RGB', (ili9341.ILI9341_TFTHEIGHT, ili9341.ILI9341_TFTWIDTH), (255,255,255)) 
@@ -152,14 +158,16 @@ class MarcosST7789Test:
         pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
 
         return pix
-
+    '''
+    '''
     def loadFonts(self):
         self._fonts = {}
         self._fonts['font60'] = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 60)
         self._fonts['font30'] = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 30)
         self._fonts['font15'] = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 15)
-
+    '''
  
+
     # A thread that produces data 
     def processor(self, condition):
 
@@ -169,8 +177,15 @@ class MarcosST7789Test:
         if self._args.dual:
             shm2 = shared_memory.SharedMemory(name=self._disp[1]._shm_buffer_name)
 
+        '''
         # Load fonts
         self.loadFonts()
+        '''
+
+        self._menu = [MenuLoader().loadMenu(os.path.join(confdir,'menu1.json'))]
+
+        if self._args.dual:
+            self._menu.append(MenuLoader().loadMenu(os.path.join(confdir,'menu1.json')))
 
 
         start_time = time.time()
@@ -183,11 +198,23 @@ class MarcosST7789Test:
             start_time = end_time
 
             ############## IMAGE 1 ###############
-            pix = self.drawDisplay1()
+            image = self._menu[0].getImage()
+
+            img = np.asarray(image)
+            pix = np.zeros((240, 320,2), dtype = np.uint8)
+            #RGB888 >> RGB565
+            pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
+            pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
             
             ############## IMAGE 2 ###############
             if self._args.dual:
-                pix2 = self.drawDisplay2()
+                image2 = self._menu[1].getImage()
+
+                img2 = np.asarray(image2)
+                pix = np.zeros((240, 320,2), dtype = np.uint8)
+                #RGB888 >> RGB565
+                pix2[...,[0]] = np.add(np.bitwise_and(img2[...,[0]],0xF8),np.right_shift(img2[...,[1]],5))
+                pix2[...,[1]] = np.add(np.bitwise_and(np.left_shift(img2[...,[1]],3),0xE0), np.right_shift(img2[...,[2]],3))
 
             with condition:
                 condition.wait()

@@ -1,0 +1,33 @@
+{
+	"title": {
+        "origin" : [5,5],
+        "text" : "Menu 1"
+    },
+	"size": {
+		"width": 320,
+		"height": 240
+	},
+    "bg_color": "RED",
+    "objects" : [
+        {
+            "type" : "menu",
+            "origin" : [5,30],
+            "size": {
+                "width": 150,
+                "height": 205
+            },
+            "bg_color": "BLUE",
+            "objects" : []
+        },
+        {
+            "type" : "menu",
+            "origin" : [165,30],
+            "size": {
+                "width": 150,
+                "height": 205
+            },
+            "bg_color": "GREEN",
+            "objects" : []
+        }
+    ]
+}

@@ -46,7 +46,7 @@ class RaspberryPi:
 
         spi = spidev.SpiDev(0, cs)
         spi.mode = 0b00
-        spi.max_speed_hz = 32000000 
+        spi.max_speed_hz = 20000000 
         self.SPI.append(spi)
 
         return 0
