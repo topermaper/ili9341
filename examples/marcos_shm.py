@@ -5,6 +5,7 @@ import time
 import sys
 import os
 import argparse
+import collections
 
 picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
 libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
@@ -16,6 +17,7 @@ import time
 import numpy as np
 from LCD import ili9341
 from PIL import Image, ImageDraw, ImageFont
+from statistics import mean
 
 from multiprocessing import shared_memory
 import multiprocessing
@@ -83,12 +85,12 @@ class MarcosST7789Test:
         # draw text
         draw.text((60, 30), u'It works !', font = self._fonts['font30'], fill = "WHITE")
         draw.text((85, 85), 'ILI9341 test', font = self._fonts['font15'], fill = "BLUE")
-        draw.text((90, 110), 'fps: {0:.2f}'.format(self.fps), font = self._fonts['font15'], fill = "BLUE")
+        draw.text((90, 110), 'fps: {0:.1f}'.format(self.fps), font = self._fonts['font15'], fill = "BLUE")
+    
+        self._cpu.append(psutil.cpu_percent())
         
-        # gives a single float value
-        draw.text((60, 140), 'CPU usage: {0:.1f}%'.format(psutil.cpu_percent()), font = self._fonts['font15'], fill = "BLUE")
-
-        draw.text((45, 170), 'CPU clock: {0:.1f} MHz'.format(psutil.cpu_freq().current), font = self._fonts['font15'], fill = "BLUE")
+        draw.text((60, 140), 'CPU usage: {}%'.format(int(mean(self._cpu))), font = self._fonts['font15'], fill = "BLUE")
+        draw.text((50, 170), 'CPU clock: {0}MHz'.format(int(psutil.cpu_freq().current)), font = self._fonts['font15'], fill = "BLUE")
             
         draw.text((240, 90), '1', font = self._fonts['font60'], fill = "BLACK")
         
@@ -99,39 +101,6 @@ class MarcosST7789Test:
         logging.debug("New Image is ready to be processed and rendered")
         return image
 
-
-    '''
-    # Returns pixel array in format RGB565, ready for rendering
-    def drawDisplay2(self):
-        image = Image.new('RGB', (ili9341.ILI9341_TFTHEIGHT, ili9341.ILI9341_TFTWIDTH), (255,255,255)) 
-
-        draw = ImageDraw.Draw(image)
-
-        # print draw line
-        draw.line([(40,20),(200,20)],   fill = "RED",width = 5)
-        draw.line([(40,20),(40,200)],   fill = "RED",width = 5)
-        draw.line([(40,200),(200,200)], fill = "RED",width = 5)
-        draw.line([(200,20),(200,200)], fill = "RED",width = 5)
-
-        # draw rectangle
-        draw.rectangle([(50,30),(190,70)],fill = "RED")
-            
-        # draw text
-        draw.text((60, 30), u'It works !', font = self._fonts['font30'], fill = "WHITE")
-        draw.text((85, 85), 'ILI9341 test', font = self._fonts['font15'], fill = "RED")
-        draw.text((90, 110), 'fps: {0:.2f}'.format(self.fps), font = self._fonts['font15'], fill = "RED")
-        
-        # gives a single float value
-        draw.text((90, 140), 'CPU: {0:.1f}%'.format(psutil.cpu_percent()), font = self._fonts['font15'], fill = "RED")
-
-        draw.text((240, 90), '2', font = self._fonts['font60'], fill = "BLACK")
-        
-        # Display some bubbles to stress the cpu
-        for i in range(self._args.bubbles):
-            Ball(draw,randint(0,320),randint(0,240),randint(5,25))
-
-        return image
-    '''
 
     def loadFonts(self):
         self._fonts = {}
@@ -150,6 +119,8 @@ class MarcosST7789Test:
 
         start_time = time.time()
         end_time   = 0
+
+        self._cpu = collections.deque([0], maxlen=40)
 
         while True: 
 
