@@ -14,7 +14,7 @@ class RaspberryPi:
 
     # GPIO 9 for display 0
     CS0_PIN = 8
-    CS1_PIN = None
+    CS1_PIN = 8
 
     def __init__(self):
        self.SPI = []
@@ -34,7 +34,7 @@ class RaspberryPi:
     def spi_writebytes2(self, data, cs=0):
         self.SPI[cs].writebytes2(data)
 
-    def module_init(self, cs=0):
+    def module_init(self, cs=0, spi_speed=32000000):
         logging.debug('module_init cs={}'.format(str(cs)))
 
         self.GPIO = RPi.GPIO
@@ -50,7 +50,7 @@ class RaspberryPi:
         spi.mode = 0b00
 
         # SPI bus speed
-        spi.max_speed_hz = 50000000 
+        spi.max_speed_hz = spi_speed 
         self.SPI.append(spi)
 
         return 0

@@ -7,9 +7,13 @@ import time
 import numpy as np
 import logging
 
+from PIL import Image
 from threading import Event
-from multiprocessing import shared_memory
+from multiprocessing import shared_memory, Lock, Value
+import multiprocessing
+import ctypes
 
+DEFAULT_SPI_SPEED = 32000000
 
 # Constants for interacting with display registers.
 ILI9341_TFTWIDTH    = 240
@@ -81,7 +85,8 @@ ILI9341_WHITE       = 0xFFFF
 
 class ILI9341(object):
 
-    def __init__(self, disp_id):
+    def __init__(self, disp_id, spi_speed=DEFAULT_SPI_SPEED):
+
         self.width  = ILI9341_TFTWIDTH
         self.height = ILI9341_TFTHEIGHT
         
@@ -92,14 +97,84 @@ class ILI9341(object):
         self._cs  = [config.CS0_PIN, config.CS1_PIN]
 
         self._disp_id = disp_id
+        self._spi_speed = spi_speed
 
-        self._shm_buffer_name = 'SHM_BUFFER_{}'.format(str(disp_id))
+        self._shm_buffer_name = 'shm_buffer_{}'.format(str(disp_id))
 
+        # Image to be rendered
+        self._pix = None
+
+        # Create shared memmory buffer
         self._shm_buffer = shared_memory.SharedMemory(
             name = self._shm_buffer_name,
             create=True,
             size=(ILI9341_TFTWIDTH * ILI9341_TFTHEIGHT * 2)
         )
+
+        # Parameters to share between processes
+        self._image_ready = Value(ctypes.c_bool,False,lock=False) # This object is stored in shared memory
+        self._condition = multiprocessing.Condition(lock=Lock())
+
+
+    # Create a renderer processes
+    # This process will send data to ILI9341 while parent creates new images
+    def startMultiprocessing(self):
+
+        process = multiprocessing.Process(target=self.renderer, args=(self._condition,  self._image_ready))
+        process.start()
+
+       
+    def imageReady(self,image):
+
+        # Convert RGB888 to RGB565
+        img = np.asarray(image)
+        self._pix = np.zeros((240, 320,2), dtype = np.uint8)
+        
+        self._pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
+        self._pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
+
+        with self._condition:
+            if self._image_ready.value == True: 
+                self._condition.wait()
+
+            nd_array = np.ndarray(shape=self._pix.shape, dtype = self._pix.dtype, buffer=self._shm_buffer.buf)
+            nd_array[:] = self._pix[:]
+
+            self._image_ready.value = True
+            self._condition.notify()          
+
+
+    # A thread that consumes data
+    # Renders buffer
+    def renderer(self, condition, image_ready):
+        
+        logging.debug("I'm the renderer process")
+
+        start_time = time.time()
+        end_time   = 0
+
+        while True:
+
+            fps = (1/(end_time - start_time))
+            start_time = end_time
+
+            self.SetWindows(0, 0, self.height, self.width, self._disp_id)
+            config.digital_write(self._dc,GPIO.HIGH)
+
+            image = np.frombuffer(buffer= self._shm_buffer.buf, dtype=np.uint8)
+
+            with condition:
+                if image_ready.value == False:
+                    condition.wait()
+
+                # Use spi_writebytes2 to avoid calling tolist()
+                config.spi_writebytes2(image, self._disp_id)
+
+                self._image_ready.value = False     
+                condition.notify()
+
+            logging.info("Rendering at {:.1f} fps".format(fps))
+            end_time = time.time()
 
 
     def select_display(self,disp_id):
@@ -108,6 +183,7 @@ class ILI9341(object):
                 config.digital_write(self._cs[i], GPIO.HIGH)
             else:
                 config.digital_write(self._cs[i], GPIO.LOW)
+
 
     def unselect_display(self,disp_id):
         for i in range(len(self._cs)):
@@ -125,6 +201,7 @@ class ILI9341(object):
         config.spi_writebyte([cmd], disp_id)
         self.unselect_display(disp_id)
 
+
     # Write register address and data
     def data(self, val, disp_id):
         logging.debug("Data: {} screen: {}".format(hex(val),disp_id))
@@ -133,12 +210,14 @@ class ILI9341(object):
         config.spi_writebyte([val], disp_id)
         self.unselect_display(disp_id)
 
+
     # Initialize dispaly
     def Init(self):
 
         logging.debug('Initializing display {}'.format(self._disp_id))
-        config.module_init(self._disp_id)
-        logging.debug('** Start command init sequence **')
+        config.module_init(cs=self._disp_id, spi_speed=self._spi_speed)
+
+        logging.debug('** Start init command sequence **')
 
         self.reset()
 
@@ -233,7 +312,11 @@ class ILI9341(object):
         # Turn on backlight
         config.digital_write(self._bl, GPIO.HIGH)
 
-        logging.debug('** End command init sequence **')
+        logging.debug('** End init command sequence **')
+
+        # Start multiprocessing
+        self.startMultiprocessing()
+
 
     def reset(self):
         logging.debug("Reseting display {}".format(self._disp_id))
@@ -267,20 +350,3 @@ class ILI9341(object):
         self.data(y1 >> 8, cs)
         self.data(y1, cs)                   # YEND
         self.command(ILI9341_RAMWR, cs)     # write to RAM
-
-
-    def Render(self):
-        
-        # Render buffer
-        #print('im the rendered going to sleep {0:.3f}'.format(time.time()))
-        logging.debug('** START RENDERING **')
-        if self._shm_buffer is not None:
-
-            self.SetWindows ( 0, 0, self.height, self.width, self._disp_id)
-            config.digital_write(self._dc,GPIO.HIGH)
-
-            image = np.frombuffer(buffer= self._shm_buffer.buf, dtype=np.uint8)
-
-            # Use spi_writebytes2 to avoid calling tolist()
-            config.spi_writebytes2(image, self._disp_id)
-
