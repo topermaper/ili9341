@@ -15,7 +15,7 @@ if os.path.exists(libdir):
 import logging
 import time
 import numpy as np
-from LCD import ili9341
+from LCD import frontpanel
 from PIL import Image, ImageDraw, ImageFont
 from statistics import mean
 
@@ -32,20 +32,14 @@ class MarcosST7789Test:
 
     def initLCD(self):
 
-        # Initialize  ILI9341 library
-        if self._args.dual:
-            self._disp = [ili9341.ILI9341(0, spi_speed=self._args.spi_clock), ili9341.ILI9341(1, spi_speed=self._args.spi_clock)]
-        else:
-            self._disp = [ili9341.ILI9341(0, spi_speed=self._args.spi_clock)]
+        # Initialize front panel
+        self._fp = frontpanel.Frontpanel(['ILI9341'], spi_speed=self._args.spi_clock)
 
-        for disp in self._disp:
-            disp.Init()
 
 
     def parseArgs(self):
         parser = argparse.ArgumentParser(description='Drives 1 or 2 ILI9341 TFT screens over SPI using a RP3B+')
         parser.add_argument('--clock', dest='spi_clock', type=int, default=32000000, help='SPI clock speed Hz')
-        parser.add_argument('--dual',  default=False, action=argparse.BooleanOptionalAction, help='Enables dual screen')
         parser.add_argument('--bubbles', dest='bubbles', type=int, default=25, help='Amount of bubbles per frames. Bubbles are used to stress to CPU during testing.')
         parser.add_argument(
             '-d', '--debug',
@@ -69,7 +63,9 @@ class MarcosST7789Test:
 
     # Returns pixel array in format RGB565, ready for rendering
     def drawDisplay1(self):
-        image = Image.new('RGB', (ili9341.ILI9341_TFTHEIGHT, ili9341.ILI9341_TFTWIDTH), (255,255,255)) 
+        self._cpu.append(psutil.cpu_percent())
+
+        image = Image.new('RGB', (320, 240), (255,255,255)) 
 
         draw = ImageDraw.Draw(image)
 
@@ -80,25 +76,21 @@ class MarcosST7789Test:
         draw.line([(200,20),(200,200)], fill = "BLUE",width = 5)
 
         # draw rectangle
-        draw.rectangle([(50,30),(190,70)],fill = "BLUE")
+        draw.rectangle([(50,30),(190,65)],fill = "BLUE")
             
         # draw text
-        draw.text((60, 30), u'It works !', font = self._fonts['font30'], fill = "WHITE")
-        draw.text((85, 85), 'ILI9341 test', font = self._fonts['font15'], fill = "BLUE")
-        draw.text((90, 110), 'fps: {0:.1f}'.format(self.fps), font = self._fonts['font15'], fill = "BLUE")
-    
-        self._cpu.append(psutil.cpu_percent())
-        
-        draw.text((60, 140), 'CPU usage: {}%'.format(int(mean(self._cpu))), font = self._fonts['font15'], fill = "BLUE")
-        draw.text((50, 170), 'CPU clock: {0}MHz'.format(int(psutil.cpu_freq().current)), font = self._fonts['font15'], fill = "BLUE")
+        draw.text((60, 29), 'It works !', font = self._fonts['font30'], fill = "WHITE")
+        draw.text((65, 85), 'Temperature: {0:.1f}°C'.format(psutil.sensors_temperatures()['cpu_thermal'][0].current), font = self._fonts['font12'], fill = "BLUE")
+        draw.text((75, 110), 'ILI9341@{0:.1f}fps'.format(self.fps), font = self._fonts['font12'], fill = "BLUE")
+        draw.text((75, 140), 'CPU usage: {}%'.format(int(mean(self._cpu))), font = self._fonts['font12'], fill = "BLUE")
+        draw.text((65, 170), 'CPU clock: {0}MHz'.format(int(psutil.cpu_freq().current)), font = self._fonts['font12'], fill = "BLUE")
             
-        draw.text((240, 90), '1', font = self._fonts['font60'], fill = "BLACK")
+        draw.text((240, 90), '1', font = self._fonts['font30'], fill = "BLACK")
         
         # Display some bubbles to stress the cpu
         for i in range(self._args.bubbles):
             Ball(draw,randint(0,320),randint(0,240),randint(5,25))
 
-        logging.debug("New Image is ready to be processed and rendered")
         return image
 
 
@@ -106,7 +98,7 @@ class MarcosST7789Test:
         self._fonts = {}
         self._fonts['font60'] = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 60)
         self._fonts['font30'] = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 30)
-        self._fonts['font15'] = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 15)
+        self._fonts['font12'] = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 12)
 
  
     def main(self):
@@ -120,7 +112,7 @@ class MarcosST7789Test:
         start_time = time.time()
         end_time   = 0
 
-        self._cpu = collections.deque([0], maxlen=40)
+        self._cpu = collections.deque([0], maxlen=20)
 
         while True: 
 
@@ -129,7 +121,7 @@ class MarcosST7789Test:
             start_time = end_time
 
             image = self.drawDisplay1()
-            self._disp[0].imageReady(image)
+            self._fp.display(image=image, disp_id=0)
 
             '''
             if self._args.dual:

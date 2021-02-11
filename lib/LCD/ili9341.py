@@ -8,10 +8,6 @@ import numpy as np
 import logging
 
 from PIL import Image
-from threading import Event
-from multiprocessing import shared_memory, Lock, Value
-import multiprocessing
-import ctypes
 
 DEFAULT_SPI_SPEED = 32000000
 
@@ -104,26 +100,7 @@ class ILI9341(object):
         # Image to be rendered
         self._pix = None
 
-        # Create shared memmory buffer
-        self._shm_buffer = shared_memory.SharedMemory(
-            name = self._shm_buffer_name,
-            create=True,
-            size=(ILI9341_TFTWIDTH * ILI9341_TFTHEIGHT * 2)
-        )
-
-        # Parameters to share between processes
-        self._image_ready = Value(ctypes.c_bool,False,lock=False) # This object is stored in shared memory
-        self._condition = multiprocessing.Condition(lock=Lock())
-
-
-    # Create a renderer processes
-    # This process will send data to ILI9341 while parent creates new images
-    def startMultiprocessing(self):
-
-        process = multiprocessing.Process(target=self.renderer, args=(self._condition,  self._image_ready))
-        process.start()
-
-       
+    '''
     def imageReady(self,image):
 
         # Convert RGB888 to RGB565
@@ -142,8 +119,9 @@ class ILI9341(object):
 
             self._image_ready.value = True
             self._condition.notify()          
+    '''
 
-
+    '''
     # A thread that consumes data
     # Renders buffer
     def renderer(self, condition, image_ready):
@@ -175,7 +153,7 @@ class ILI9341(object):
 
             logging.info("Rendering at {:.1f} fps".format(fps))
             end_time = time.time()
-
+    '''
 
     def select_display(self,disp_id):
         for i in range(len(self._cs)):
@@ -314,8 +292,6 @@ class ILI9341(object):
 
         logging.debug('** End init command sequence **')
 
-        # Start multiprocessing
-        self.startMultiprocessing()
 
 
     def reset(self):
