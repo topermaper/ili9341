@@ -6,29 +6,27 @@ import sys
 import os
 import argparse
 import collections
+import logging
+import time
+import psutil
+import numpy as np
 
-picdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'pic')
-libdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'lib')
+
+picdir = os.path.join(os.getcwd(), 'pic')
+libdir = os.path.join(os.getcwd(), 'lib')
+
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
-import logging
-import time
-import numpy as np
 from LCD import frontpanel
 from PIL import Image, ImageDraw, ImageFont
 from statistics import mean
 
-from multiprocessing import shared_memory
-import multiprocessing
-import threading
-from utils.ball import Ball
+from lib.utils.ball import Ball
 from random import randint
 
-import psutil
 
-
-class MarcosST7789Test:
+class ILI9341Test:
 
     def initLCD(self):
 
@@ -36,11 +34,10 @@ class MarcosST7789Test:
         self._fp = frontpanel.Frontpanel(['ILI9341'], spi_speed=self._args.spi_clock)
 
 
-
     def parseArgs(self):
         parser = argparse.ArgumentParser(description='Drives 1 or 2 ILI9341 TFT screens over SPI using a RP3B+')
         parser.add_argument('--clock', dest='spi_clock', type=int, default=32000000, help='SPI clock speed Hz')
-        parser.add_argument('--bubbles', dest='bubbles', type=int, default=25, help='Amount of bubbles per frames. Bubbles are used to stress to CPU during testing.')
+        parser.add_argument('--bubbles', dest='bubbles', type=int, default=0, help='Amount of bubbles per frames. Bubbles are used to stress to CPU during testing.')
         parser.add_argument(
             '-d', '--debug',
             help="Print lots of debugging statements",
@@ -81,7 +78,7 @@ class MarcosST7789Test:
         # draw text
         draw.text((60, 29), 'It works !', font = self._fonts['font30'], fill = "WHITE")
         draw.text((65, 85), 'Temperature: {0:.1f}°C'.format(psutil.sensors_temperatures()['cpu_thermal'][0].current), font = self._fonts['font12'], fill = "BLUE")
-        draw.text((75, 110), 'ILI9341@{0:.1f}fps'.format(self.fps), font = self._fonts['font12'], fill = "BLUE")
+        draw.text((75, 113), 'ILI9341@{0:.1f}fps'.format(self.fps), font = self._fonts['font12'], fill = "BLUE")
         draw.text((75, 140), 'CPU usage: {}%'.format(int(mean(self._cpu))), font = self._fonts['font12'], fill = "BLUE")
         #draw.text((65, 170), 'CPU clock: {0}MHz'.format(int(psutil.cpu_freq().current)), font = self._fonts['font12'], fill = "BLUE")
             
@@ -123,23 +120,11 @@ class MarcosST7789Test:
             image = self.drawDisplay1()
             self._fp.display(image=image, disp_id=0)
 
-            '''
-            if self._args.dual:
-                image = self.drawDisplay2()  
-                self._disp[1] = self.imageReady(image)
-            '''
-
             end_time = time.time()
 
 
 
-
 if __name__ == "__main__":
-    app = MarcosST7789Test()
+    app = ILI9341Test()
     app.main()
-
-
-
-
-
 

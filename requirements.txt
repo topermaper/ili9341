@@ -2,3 +2,4 @@ numpy==1.19.5
 spidev==3.5
 Pillow==5.4.1
 RPi.GPIO==0.7.0
+psutil==5.8.0

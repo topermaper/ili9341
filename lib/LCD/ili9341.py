@@ -100,60 +100,6 @@ class ILI9341(object):
         # Image to be rendered
         self._pix = None
 
-    '''
-    def imageReady(self,image):
-
-        # Convert RGB888 to RGB565
-        img = np.asarray(image)
-        self._pix = np.zeros((240, 320,2), dtype = np.uint8)
-        
-        self._pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
-        self._pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
-
-        with self._condition:
-            if self._image_ready.value == True: 
-                self._condition.wait()
-
-            nd_array = np.ndarray(shape=self._pix.shape, dtype = self._pix.dtype, buffer=self._shm_buffer.buf)
-            nd_array[:] = self._pix[:]
-
-            self._image_ready.value = True
-            self._condition.notify()          
-    '''
-
-    '''
-    # A thread that consumes data
-    # Renders buffer
-    def renderer(self, condition, image_ready):
-        
-        logging.debug("I'm the renderer process")
-
-        start_time = time.time()
-        end_time   = 0
-
-        while True:
-
-            fps = (1/(end_time - start_time))
-            start_time = end_time
-
-            self.SetWindows(0, 0, self.height, self.width, self._disp_id)
-            config.digital_write(self._dc,GPIO.HIGH)
-
-            image = np.frombuffer(buffer= self._shm_buffer.buf, dtype=np.uint8)
-
-            with condition:
-                if image_ready.value == False:
-                    condition.wait()
-
-                # Use spi_writebytes2 to avoid calling tolist()
-                config.spi_writebytes2(image, self._disp_id)
-
-                self._image_ready.value = False     
-                condition.notify()
-
-            logging.info("Rendering at {:.1f} fps".format(fps))
-            end_time = time.time()
-    '''
 
     def select_display(self,disp_id):
         for i in range(len(self._cs)):
