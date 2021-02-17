@@ -38,7 +38,7 @@ class Frontpanel(object):
         self._shm_buffer = []
 
         for cs in range(len(self._display)):
-            self._shm_buffer_name.append('shared_buffer_{}'.format(str(cs)))
+            self._shm_buffer_name.append('shared_buffer__{}'.format(str(cs)))
             self._shm_buffer.append( shared_memory.SharedMemory(
                     name = self._shm_buffer_name[cs],
                     create=True,

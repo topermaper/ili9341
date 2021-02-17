@@ -83,7 +83,7 @@ class MarcosST7789Test:
         draw.text((65, 85), 'Temperature: {0:.1f}°C'.format(psutil.sensors_temperatures()['cpu_thermal'][0].current), font = self._fonts['font12'], fill = "BLUE")
         draw.text((75, 110), 'ILI9341@{0:.1f}fps'.format(self.fps), font = self._fonts['font12'], fill = "BLUE")
         draw.text((75, 140), 'CPU usage: {}%'.format(int(mean(self._cpu))), font = self._fonts['font12'], fill = "BLUE")
-        draw.text((65, 170), 'CPU clock: {0}MHz'.format(int(psutil.cpu_freq().current)), font = self._fonts['font12'], fill = "BLUE")
+        #draw.text((65, 170), 'CPU clock: {0}MHz'.format(int(psutil.cpu_freq().current)), font = self._fonts['font12'], fill = "BLUE")
             
         draw.text((240, 90), '1', font = self._fonts['font30'], fill = "BLACK")
         
