@@ -65,17 +65,18 @@ class Frontpanel(object):
 
         # Convert RGB888 to RGB565
         img = np.asarray(image)
-        self._pix = np.zeros((240, 320,2), dtype = np.uint8)
+        pix = np.zeros((240, 320,2), dtype = np.uint8)
         
-        self._pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
-        self._pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
+        pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
+        pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
 
+        nd_array = np.ndarray(shape=pix.shape, dtype = pix.dtype, buffer=self._shm_buffer[disp_id].buf)
+           
         with self._condition:
             if self._image_ready.value == True: 
                 self._condition.wait()
 
-            nd_array = np.ndarray(shape=self._pix.shape, dtype = self._pix.dtype, buffer=self._shm_buffer[disp_id].buf)
-            nd_array[:] = self._pix[:]
+            nd_array[:] = pix[:]
 
             self._image_ready.value = True
             self._condition.notify()
@@ -85,28 +86,28 @@ class Frontpanel(object):
         
         logging.debug("I'm the renderer process")
 
-        start_time = time.time()
-        end_time   = 0
+        #start_time = time.time()
+        #end_time   = 0
 
         while True:
 
-            fps = (1/(end_time - start_time))
-            start_time = end_time
+            #fps = (1/(end_time - start_time))
+            #start_time = end_time
 
             self._display[0].SetWindows(0, 0, 320, 240)
             config.digital_write(self._display[0]._dc,GPIO.HIGH)
 
-            image = np.frombuffer(buffer= self._shm_buffer[0].buf, dtype=np.uint8)
+            #image = np.frombuffer(buffer= self._shm_buffer[0].buf, dtype=np.uint8)
 
             with condition:
                 if image_ready.value == False:
                     condition.wait()
 
                 # Use spi_writebytes2 to avoid calling tolist()
-                config.spi_writebytes2(image, 0)
+                config.spi_writebytes2(self._shm_buffer[0].buf, 0)
 
                 self._image_ready.value = False     
                 condition.notify()
 
-            logging.info("Rendering at {:.1f} fps".format(fps))
-            end_time = time.time()  
+            #logging.info("Rendering at {:.1f} fps".format(fps))
+            #end_time = time.time()  
