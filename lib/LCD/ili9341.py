@@ -95,8 +95,6 @@ class ILI9341(object):
         self._disp_id = disp_id
         self._spi_speed = spi_speed
 
-        self._shm_buffer_name = 'shm_buffer_{}'.format(str(disp_id))
-
         # Image to be rendered
         self._pix = None
 

@@ -59,7 +59,7 @@ class ILI9341Test:
 
 
     # Returns pixel array in format RGB565, ready for rendering
-    def drawDisplay1(self):
+    def drawDisplay(self):
         self._cpu.append(psutil.cpu_percent())
 
         image = Image.new('RGB', (320, 240), (255,255,255)) 
@@ -117,7 +117,7 @@ class ILI9341Test:
 
             start_time = end_time
 
-            image = self.drawDisplay1()
+            image = self.drawDisplay()
             self._fp.display(image=image, disp_id=0)
 
             end_time = time.time()
