@@ -6,11 +6,13 @@ import RPi.GPIO as GPIO
 import time
 import numpy as np
 import logging
+import mmap
+import os
+
 
 from PIL import Image
 from threading import Event
-from multiprocessing import shared_memory, Lock, Value
-import multiprocessing
+from multiprocessing import Lock, Value, Condition
 import ctypes
 
 
@@ -38,27 +40,17 @@ class Frontpanel(object):
         self._shm_buffer = []
 
         for cs in range(len(self._display)):
-            self._shm_buffer_name.append('sh_buffer_{}'.format(str(cs)))
-            self._shm_buffer.append(shared_memory.SharedMemory(
-                    name = self._shm_buffer_name[cs],
-                    create=True,
-                    size=(self._display[cs].width * self._display[cs].height * 2)
-                )
-            )
+            bufsize = self._display[cs].width * self._display[cs].height * 2
+            self._shm_buffer.append(mmap.mmap(-1, length=bufsize, access=mmap.ACCESS_WRITE))
 
         # Parameters to share between processes
         self._image_ready = Value(ctypes.c_bool,False,lock=False) # This object is stored in shared memory
-        self._condition = multiprocessing.Condition(lock=Lock())
+        self._condition = Condition(lock=Lock())
 
-        self.startMultiprocessing()
-
-
-    # Create a renderer processes
-    # This process will send data to ILI9341 while parent creates new images
-    def startMultiprocessing(self):
-
-        process = multiprocessing.Process(target=self.renderer, args=(self._condition,  self._image_ready))
-        process.start()
+        pid = os.fork()
+        if pid == 0:
+            # Child process
+            self.renderer(self._condition, self._image_ready)
 
 
     def display(self,image,disp_id=0):
@@ -70,7 +62,7 @@ class Frontpanel(object):
         pix[...,[0]] = np.add(np.bitwise_and(img[...,[0]],0xF8),np.right_shift(img[...,[1]],5))
         pix[...,[1]] = np.add(np.bitwise_and(np.left_shift(img[...,[1]],3),0xE0), np.right_shift(img[...,[2]],3))
 
-        nd_array = np.ndarray(shape=pix.shape, dtype = pix.dtype, buffer=self._shm_buffer[disp_id].buf)
+        nd_array = np.ndarray(shape=pix.shape, dtype = pix.dtype, buffer=self._shm_buffer[disp_id])
            
         with self._condition:
             if self._image_ready.value == True: 
@@ -104,7 +96,7 @@ class Frontpanel(object):
                     condition.wait()
 
                 # Use spi_writebytes2 to avoid calling tolist()
-                config.spi_writebytes2(self._shm_buffer[0].buf, 0)
+                config.spi_writebytes2(self._shm_buffer[0], 0)
 
                 self._image_ready.value = False     
                 condition.notify()
